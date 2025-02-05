@@ -1,0 +1,38 @@
+# Build output
+/dist
+/build
+
+# Logs
+*.log
+*.log.*
+
+# Docker
+.docker/
+docker-compose.override.yml
+
+# Python (if relevant)
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+
+# Virtual environment (if using Python)
+venv/
+env/
+.venv/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+
+# Editor specific files
+.vscode/
+.idea/
+
+# Temporary files
+*.swp
+*~
+

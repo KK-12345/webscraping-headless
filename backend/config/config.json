@@ -1,0 +1,25 @@
+{
+  "logger": {
+    "log_level": "INFO",
+    "log_file": "logger/scrape_log.log"
+  },
+  "rate_limiter": {
+    "leak_rate": 1.0,
+    "capacity": 10
+  },
+  "amazon": {
+    "login_url": "https://www.amazon.in/ap/signin?openid.pape.max_auth_age=0&openid.return_to=https%3A%2F%2Fwww.amazon.in%2F%3Fref_%3Dnav_custrec_signin&openid.identity=http%3A%2F%2Fspecs.openid.net%2Fauth%2F2.0%2Fidentifier_select&openid.assoc_handle=inflex&openid.mode=checkid_setup&openid.claimed_id=http%3A%2F%2Fspecs.openid.net%2Fauth%2F2.0%2Fidentifier_select&openid.ns=http%3A%2F%2Fspecs.openid.net%2Fauth%2F2.0",
+    "username": "sh.kadam4@gmail.com",
+    "password": "",
+    "max_pages_to_scrape": 10,
+    "max_retries": 5,
+    "delay": 2
+  },
+  "flipkart": {
+    "max_pages_to_scrape": 10,
+    "max_retries": 5,
+    "delay": 2
+  },
+  "retry": {
+  }
+}

@@ -68,10 +68,14 @@ def decrypt_data(encrypted_data: str, seed: str = None) -> str:
 
 
 if __name__ == "__main__":
-    seed = "my_secure_passphrase"
-    data = "kk@9623194889"
+    ## Use the passphrase mentioned in constant.py value of SECURE_PASSPHRASE
+    # generic constant
+    seed = ""
+    ## use your Amazon password
+    data = ""
 
-    # Encrypt the data
+    # Encrypt the data or you can directly
+    # pass your amazon password to encypt
     encrypted = encrypt_data(data, seed)
     print(f"Encrypted Data: {encrypted}")
 

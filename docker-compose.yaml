@@ -10,8 +10,8 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - AMAZON__USERNAME=shrikrishna.kadam4@gmail.com
-      - AMAZON_PASSWORD=gAAAAABno2ly0_Z1pPK_TxguCLEvsfmCoKQvPiILtqiqX6Fk5x06mpLSQ_XTz2KvJniqkyWIr07kn5A9uPRjrQUd6a82WWbz9w==
+      - AMAZON__USERNAME=youremail@gmail.com
+      - AMAZON__PASSWORD=encrypted_amazon_password_using_utlis_encrypt_method 
     networks:
       - app-network
   ui:

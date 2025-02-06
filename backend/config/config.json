@@ -16,7 +16,7 @@
     "delay": 2
   },
   "flipkart": {
-    "max_pages_to_scrape": 2,
+    "max_pages_to_scrape": 6,
     "max_retries": 5,
     "delay": 2
   }

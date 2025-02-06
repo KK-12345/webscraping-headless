@@ -126,6 +126,18 @@ AMAZON__USERNAME=<email>
 AMAZON__PASSWORD=<encrypted_password> # use from utils import encrypt_data which by default will use passphrase 
 # from code by default 
 ```
+### Output Screenshots
+#### fronted
+Showing input URL and scraped reviews
+![output1.png](output1.png)
+
+![output2.png](output2.png)
+
+#### backend 
+Showing executed code
+![output3.png](output3.png)
+![output4.png](output4.png)
+
 ### Limitations
 1. Navigation from root page to reviews page is considered not in scope
 2. Not implemented scraping product details and date conversions

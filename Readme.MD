@@ -48,11 +48,4 @@ The response depends on the implementation but typically will contain a status o
 If the URL is valid and successfully processed, the response will contain the processed data or a success message.
 
 ```json
-{
-  "status": "success",
-  "message": "URL processed successfully",
-  "data": {
-    "url": "https://example.com",
-    "content_type": "text/html",
-    "word_count": 1200
-  }
+{'reviews': [], 'status': 'failed', 'status_code': 500, 'error': 'Failed to scrape the reviews due to internal error'}

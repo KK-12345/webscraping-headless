@@ -10,7 +10,8 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - NUM_PAGES_TO_SCRAPE=10
+      - AMAZON__USERNAME=shrikrishna.kadam4@gmail.com
+      - AMAZON_PASSWORD=gAAAAABno2ly0_Z1pPK_TxguCLEvsfmCoKQvPiILtqiqX6Fk5x06mpLSQ_XTz2KvJniqkyWIr07kn5A9uPRjrQUd6a82WWbz9w==
     networks:
       - app-network
   ui:

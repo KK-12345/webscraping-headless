@@ -10,7 +10,13 @@ class FlipkartScrapingUtils:
 
     def __init__(self, config):
         self.page = None
-        self.headers = None
+        self.headers = {
+            'authority': 'www.flipkart.com',
+            'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+            'accept-language': 'en-US,en;q=0.9,bn;q=0.8',
+            'sec-ch-ua': '" Not A;Brand";v="99", "Chromium";v="102", "Google Chrome";v="102"',
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36'
+        }
         self.load_config(config)
 
     def load_config(self, config):
@@ -22,23 +28,15 @@ class FlipkartScrapingUtils:
         except (KeyError, TypeError) as ex:
             raise ex
 
-    @classmethod
-    async def create(cls, config):
-        logger.debug(f"Creating an instance of {cls.__name__}")
-        instance = cls(config)
-        await instance.init()
-        logger.debug(f"Created an instance of {cls.__name__}")
-        return instance
+    async def create(self):
+        logger.debug(f"Creating an instance of {self.__class__.__name__}")
+        await self.init()
+        logger.debug(f"Created an instance of {self.__class__.__name__}")
+        return self
 
     async def init(self):
         logger.debug(f"Initialising..{self.__class__.__name__}")
-        self.headers = {
-            'authority': 'www.flipkart.com',
-            'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-            'accept-language': 'en-US,en;q=0.9,bn;q=0.8',
-            'sec-ch-ua': '" Not A;Brand";v="99", "Chromium";v="102", "Google Chrome";v="102"',
-            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36'
-        }
+
         p = await async_playwright().start()
         browser = await p.chromium.launch(headless=True)
         self.context = await browser.new_context()
@@ -53,7 +51,7 @@ class FlipkartScrapingUtils:
         """
         logger.debug(f"Getting the number of view pages of a product: {url}")
         page = await self.context.new_page()
-        await self.perform_request(link=url, page=page)
+        await self.perform_request_with_retry(link=url, page=page)
         await page.wait_for_selector("._1G0WLw.mpIySA", timeout=5000)
         pagination_selector = await page.query_selector('._1G0WLw.mpIySA')
         text = await pagination_selector.inner_text()
@@ -61,13 +59,19 @@ class FlipkartScrapingUtils:
         logger.debug(f"Found pages {pages} for the product: {url}")
         return pages
 
-    @retry_async(max_retries=5, delay=2)
-    async def perform_request(self, link, page, page_num=1):
-        logger.info(f"Performing a request for {link}, page: {page} page number: {page_num}")
-        if page_num > 1:
-            link = link + f'&page={page_num}'
-        await page.goto(link)
-        logger.info(f"Traversed to {link}")
+    async def perform_request_with_retry(self, link, page, page_num=1):
+        """
+        # Performs request with configurable retries and delays from config.json
+        """
+
+        @retry_async(max_retries=self.max_retries, delay=self.delay)
+        async def perform_request(link, page, page_num=1):
+            logger.info(f"Performing a request for {link}, page: {page} page number: {page_num}")
+            if page_num > 1:
+                link = link + f'&page={page_num}'
+            await page.goto(link)
+            logger.info(f"Traversed to {link}")
+        await perform_request(link, page, page_num)
 
     @staticmethod
     async def get_reviews_for_elements(review_elements):
@@ -84,7 +88,7 @@ class FlipkartScrapingUtils:
         try:
             logger.info(f"Extracting reviews for url: {url} and page number: {page_num} ")
             page = await self.context.new_page()
-            await self.perform_request(url, page, page_num)
+            await self.perform_request_with_retry(url, page, page_num)
             await page.wait_for_selector(".EKFha-", timeout=60000)
 
             review_elements = await page.query_selector_all(".EKFha-")
@@ -100,8 +104,8 @@ class FlipkartScrapingUtils:
         all_reviews = []
         try:
             pages = await self.get_number_of_pages(url=url)
-            if pages > 5:
-                pages = 5
+            if pages > self.max_pages_to_scrape:
+                pages = self.max_pages_to_scrape
 
             gathered_reviews = await asyncio.gather(
                 *(self.extract_reviews_for_a_page(url, page_num) for page_num in range(1, pages+1))

@@ -1,10 +1,11 @@
 from fastapi import FastAPI, HTTPException, Query, Request
 from pydantic import BaseModel
 from typing import List, Callable
-from fastapi.responses import JSONResponse
+
+from scrapping.scraping_manager import ScrapingManager
 from utils.rate_limiter import LeakyBucket
 import asyncio
-from scrapping.scraping_manager import ScrapingManager
+
 from utils.logging import logger
 from utils.config_parser import ConfigParser
 
@@ -15,15 +16,21 @@ capacity = int(configparser.get('rate_limiter', 'capacity', default=10))
 
 async def lifespan(app: FastAPI):
     # Leaky bucket as a rate limiter
+    scraping_manager = None
+    try:
+        scraping_manager = ScrapingManager()
+    except:
+        logger.exception("Problem loading config")
 
+    app.state.scraping_manager = scraping_manager
     bucket = LeakyBucket(leak_rate=leak_rate, capacity=capacity)
     app.state.bucket = bucket
+
 
     asyncio.create_task(bucket.leak())
 
     yield
 
-   # shutting down tasks
 
 
 app = FastAPI(lifespan=lifespan)
@@ -44,14 +51,19 @@ async def rate_limiter(request: Request, call_next: Callable):
         if e.status_code == 429:
             wait_time = bucket.get_wait_time()
             logger.exception(f"Too Many Requests, wait for :{wait_time}")
-            response = JSONResponse(
-                content= {"detail": "Too Many Requests", "wait_time": wait_time},
-                status_code= e.status_code
+            response = ReviewResponse(
+                error= f"Too Many Requests, wait for :{wait_time}",
+                status_code= e.status_code,
+                reviews = [],
+                status="failed"
             )
     return response
 
 class ReviewResponse(BaseModel):
     reviews: List[dict]
+    status: str
+    status_code: int
+    error: str
 
 def find_scraping_strategy(url: str):
     if "amazon" in url:
@@ -64,16 +76,22 @@ def find_scraping_strategy(url: str):
 
 @app.get("/api/scrape_reviews", response_model=ReviewResponse)
 async def scrape_reviews(url: str = Query(..., title="URL of the product")):
+
+    scraping_manager = app.state.scraping_manager
+    reviews = []
+
     if not url:
-        raise HTTPException(status_code=400, detail="URL parameter is missing")
+        logger.exception("URL parameter is missing")
+        return ReviewResponse(reviews=reviews, status_code=400,
+                              error="URL parameter is missing", status="failed")
 
     try:
-        manager = ScrapingManager(url)
-        reviews = await manager.scrape_reviews()
-        return ReviewResponse(reviews=reviews)
+        await scraping_manager.start_manager(url)
+        reviews = await scraping_manager.scrape_reviews()
+        return ReviewResponse(reviews=reviews, status_code=200, status='success', error='')
     except Exception as ex:
-        logger.exception(ex)
-        raise HTTPException(status_code=500, detail=f"Failed to scrape the reviews : {str(ex)}")
+        logger.exception(f"Failed to scrape the reviews due to internal error: {str(ex)}")
+        return ReviewResponse(reviews=reviews, status_code=500, error="Failed to scrape the reviews due to internal error", status="failed")
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ from utils.config_parser import ConfigParser
 from utils.decorators import retry_async
 from utils.constants import AmazonQuerySelectors
 from utils.logging import logger
-from utils.exceptions import LoginCredsMissing
+from utils.exceptions import LoginCredsMissing, EncryptionError
 from utils import utils as common_utils
 
 
@@ -19,34 +19,6 @@ class AmazonScrapingUtils:
         self.context = None
         logger.info("Initialising Amazon scraper utils")
         self.load_config(config)
-
-    def load_config(self, config):
-        try:
-            config = config['amazon']
-            self.login_url = config['login_url']
-            self.username = config['username']
-            self.password = common_utils.decrypt_data(config['password'])
-            self.max_pages_to_scrape = int(config['max_pages_to_scrape'])
-            self.max_retries = int(config['max_retries'])
-            self.delay = int(config['delay'])
-
-        except (KeyError, TypeError) as ex:
-            raise ex
-
-    @classmethod
-    async def create(cls, config: dict):
-        """
-        # Creates an instance of amazon scraping utils
-        """
-        logger.debug(f"Creating an instance of: {cls.__name__}")
-        instance = cls(config)
-        await instance.init()
-        logger.debug(f"Created an instance of: {cls.__name__}")
-        return instance
-
-    async def init(self):
-        logger.info("Initialising...")
-
         self.headers = {
             'authority': 'www.amazon.com',
             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
@@ -54,6 +26,38 @@ class AmazonScrapingUtils:
             'sec-ch-ua': '" Not A;Brand";v="99", "Chromium";v="102", "Google Chrome";v="102"',
             'user-agent': 'Mozilla/5.0 (Ubuntu; Linux x86_64) AppleWebKit/537.36'
         }
+
+    def load_config(self, config):
+        try:
+            config = config['amazon']
+            self.login_url = config['login_url']
+            self.username = config['username']
+            password = config['password']
+            self.password = common_utils.decrypt_data(password)
+            self.max_pages_to_scrape = int(config['max_pages_to_scrape'])
+            self.max_retries = int(config['max_retries'])
+            self.delay = int(config['delay'])
+
+        except (KeyError, TypeError) as ex:
+            raise ex
+        except EncryptionError:
+            raise
+        except Exception as exc:
+            raise exc
+
+    async def create(self):
+        """
+        # Initiates an instance of amazon scraping utils
+        """
+        logger.debug(f"Creating an instance of: {self.__class__.__name__}")
+        # instance = cls(config)
+        await self.init()
+        logger.debug(f"Created an instance of: {self.__class__.__name__}")
+        return self
+
+    async def init(self):
+        logger.info("Initialising...")
+
         p = await async_playwright().start()
         browser = await p.chromium.launch(headless=True)
 
@@ -89,7 +93,7 @@ class AmazonScrapingUtils:
         """
         logger.debug(f"Getting the number of view pages of a product: {url}")
         page = await self.context.new_page()
-        await self.perform_request(link=url, page=page)
+        await self.perform_request_with_retry(link=url, page=page)
         await page.wait_for_selector("[data-hook='cr-filter-info-review-rating-count']")
         pagination_selector = await page.query_selector("[data-hook='cr-filter-info-review-rating-count']")
 
@@ -100,13 +104,16 @@ class AmazonScrapingUtils:
 
         return pages
 
-    @retry_async(max_retries=5, delay=2)
-    async def perform_request(self, link, page, page_num=1):
-        logger.info(f"Performing a request for {link}, page: {page} page number: {page_num}")
-        if page_num > 1:
-            link = link + f'&page={page_num}'
-        await page.goto(link)
-        logger.info(f"Traversed to {link}")
+    async def perform_request_with_retry(self, link, page, page_num=1):
+
+        @retry_async(max_retries=self.max_retries, delay=self.delay)
+        async def perform_request(link, page, page_num=1):
+            logger.info(f"Performing a request for {link}, page: {page} page number: {page_num}")
+            if page_num > 1:
+                link = link + f'&page={page_num}'
+            await page.goto(link)
+            logger.info(f"Traversed to {link}")
+        return await perform_request(link, page, page_num)
 
     @staticmethod
     async def get_reviews_for_elements(review_elements):
@@ -123,7 +130,7 @@ class AmazonScrapingUtils:
         try:
             logger.info(f"Extracting reviews for url: {url} and page number: {page_num} ")
             page = await self.context.new_page()
-            await self.perform_request(url, page, page_num)
+            await self.perform_request_with_retry(url, page, page_num)
             await page.wait_for_selector("[data-hook='review']", timeout=60000)
             review_elements = await page.query_selector_all("[data-hook='review']")
 

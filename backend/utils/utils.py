@@ -1,8 +1,10 @@
 import hashlib
 import base64
+
 from cryptography.fernet import Fernet
 from utils.constants import GenericConstants as gc
 from utils.exceptions import EncryptionError
+from utils.logging import logger
 
 def generate_key(seed: str = None) -> bytes:
     """
@@ -16,6 +18,7 @@ def generate_key(seed: str = None) -> bytes:
         hashed_seed = hashlib.sha256(seed.encode('utf-8')).digest()
         return base64.urlsafe_b64encode(hashed_seed)
     except Exception as ex:
+        logger.exception(f"Error generating key, reason {str(ex)}")
         raise EncryptionError(f"Error generating key, reason {str(ex)}")
 
 
@@ -29,6 +32,8 @@ def encrypt_data(data: str, seed: str = None) -> str:
     """
     try:
         # logger.info("Encrypting")
+        if not data:
+            raise ValueError("Encryption string not found")
         key = generate_key(seed)
         fernet = Fernet(key)
         encrypted = fernet.encrypt(data.encode())
@@ -36,6 +41,7 @@ def encrypt_data(data: str, seed: str = None) -> str:
         # logger.info("Encrypted")
         return decoded
     except Exception as ex:
+        logger.exception(f"Error encrypting data, reason {str(ex)}")
         raise EncryptionError(f"Error encrypting data, reason {str(ex)}")
 
 def decrypt_data(encrypted_data: str, seed: str = None) -> str:
@@ -47,13 +53,17 @@ def decrypt_data(encrypted_data: str, seed: str = None) -> str:
         @type: key - bytes
     """
     try:
+        if not encrypted_data:
+            raise logger.exception("decryption string not found")
         key = generate_key(seed)
         fernet = Fernet(key)
         decrypted = fernet.decrypt(encrypted_data.encode())
         decoded = decrypted.decode()
         return decoded
-    except Exception as ex:
-        raise EncryptionError(f"Error decrypting data, reason {str(ex)}")
+    except ValueError as ex:
+        exc = EncryptionError(f"Error decrypting data, reason {str(ex)}")
+        logger.exception(str(exc))
+        raise exc
 
 
 

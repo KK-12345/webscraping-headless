@@ -8,17 +8,15 @@ from utils.logging import logger
 
 class AmazonScraper(AbstractScraper):
     """Scraper crated for Amazon"""
-    def __init__(self):
-        self.amazon_utils = None
-        self.config = ConfigParser().to_json()
+    def __init__(self, config):
+        self.amazon_utils = AmazonScrapingUtils(config)
 
     async def create(self):
         """Creates a scraper and initialises utils"""
         logger.debug(f"Creating a scraper for Amazon")
-        self.amazon_utils = await AmazonScrapingUtils.create(self.config)
+        self.amazon_utils = await self.amazon_utils.create()
         logger.debug(f"Created a scraper for the Amazon")
         return self
-
 
     async def navigate_to_reviews(self, url: str):
         # url = await self.amazon_utils.navigate_to_reviews(url)
@@ -47,16 +45,15 @@ class AmazonScraper(AbstractScraper):
 
 class FlipkartScraper(AbstractScraper):
     """Scraper created for Flipkart"""
-    def __init__(self):
-        self.flipkart_utils = None
-        self.config = ConfigParser().to_json()
+    def __init__(self, config):
+        self.flipkart_utils = FlipkartScrapingUtils(config)
 
     async def create(self):
         """
         Creates self object for Flipkart Scraper
         """
         logger.debug("Crating a Flipkart Scraper instance")
-        self.flipkart_utils = await FlipkartScrapingUtils.create(self.config)
+        self.flipkart_utils = await self.flipkart_utils.create()
         logger.debug("Created a Flipkart Scraper instance")
         return self
 

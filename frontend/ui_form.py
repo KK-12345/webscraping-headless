@@ -13,10 +13,12 @@ reviews_per_page = int(os.getenv('REVIEWS_PER_PAGE', 5))
 def fetch_reviews_from_api(url):
     try:
         response = requests.get(f"{backend_url}/api/scrape_reviews?url={url}")
-        response.raise_for_status()  
-        return response.json()
+        response.raise_for_status()
+        reviews = response.json()
+        return reviews
     except requests.exceptions.HTTPError as http_err:
         st.error(f"HTTP error occurred: {http_err}")
+        # print(reviews)
     except Exception as err:
         st.error(f"Error occurred: {err}")
     return {"reviews": []}
